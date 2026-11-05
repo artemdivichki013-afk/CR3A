@@ -1,37 +1,69 @@
 name: Build CR3A
-on: push: branches: [ main, master ] tags: [ 'v*' ] pull_request: workflow_dispatch:
-jobs: windows: name: Windows (VST3 for FL Studio) runs-on: windows-latest steps: - uses: actions/checkout@v4
-  - name: Configure
-    run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
-  - name: Build
-    run: cmake --build build --config Release --target CR3A_VST3 CR3A_Standalone --parallel
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
 
-  - name: Package
-    shell: pwsh
-    run: |
-      New-Item -ItemType Directory -Force -Path dist/CR3A | Out-Null
-      Copy-Item -Recurse -Force "build/CR3A_artefacts/Release/VST3/CR3A.vst3" "dist/CR3A/CR3A.vst3"
-      if (Test-Path "build/CR3A_artefacts/Release/Standalone/CR3A.exe") {
-        Copy-Item -Force "build/CR3A_artefacts/Release/Standalone/CR3A.exe" "dist/CR3A/CR3A Standalone.exe"
-      }
-      Copy-Item -Force "installer/install_windows.bat" "dist/CR3A/install_windows.bat"
-      Copy-Item -Force "README.md" "dist/CR3A/README.md"
+jobs:
+  windows:
+    name: Windows (VST3 for FL Studio)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  - name: Upload artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: CR3A-windows-vst3
-      path: dist/CR3A
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
-  - name: Zip for release
-    if: startsWith(github.ref, 'refs/tags/v')
-    shell: pwsh
-    run: Compress-Archive -Path dist/CR3A/* -DestinationPath CR3A-windows.zip
+      - name: Build
+        run: cmake --build build --config Release --target CR3A_VST3 CR3A_Standalone --parallel
 
-  - name: Publish release
-    if: startsWith(github.ref, 'refs/tags/v')
-    uses: softprops/action-gh-release@v2
-    with:
-      files: CR3A-windows.zip
-macos: name: macOS (VST3 + AU, optional) runs-on: macos-latest continue-on-error: true steps: - uses: actions/checkout@v4 - name: Configure run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" - name: Build run: cmake --build build --config Release --parallel - name: Package run: | mkdir -p dist cp -R build/CR3A_artefacts/Release/VST3/CR3A.vst3 dist/ || true cp -R build/CR3A_artefacts/Release/AU/CR3A.component dist/ || true - uses: actions/upload-artifact@v4 with: name: CR3A-macos path: dist
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/CR3A | Out-Null
+          Copy-Item -Recurse -Force "build/CR3A_artefacts/Release/VST3/CR3A.vst3" "dist/CR3A/CR3A.vst3"
+          if (Test-Path "build/CR3A_artefacts/Release/Standalone/CR3A.exe") {
+            Copy-Item -Force "build/CR3A_artefacts/Release/Standalone/CR3A.exe" "dist/CR3A/CR3A Standalone.exe"
+          }
+          Copy-Item -Force "installer/install_windows.bat" "dist/CR3A/install_windows.bat"
+          Copy-Item -Force "README.md" "dist/CR3A/README.md"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CR3A-windows-vst3
+          path: dist/CR3A
+
+      - name: Zip for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: Compress-Archive -Path dist/CR3A/* -DestinationPath CR3A-windows.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CR3A-windows.zip
+
+  macos:
+    name: macOS (VST3 + AU, optional)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp -R build/CR3A_artefacts/Release/VST3/CR3A.vst3 dist/ || true
+          cp -R build/CR3A_artefacts/Release/AU/CR3A.component dist/ || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CR3A-macos
+          path: dist
